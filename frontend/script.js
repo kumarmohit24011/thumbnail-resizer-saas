@@ -16,7 +16,7 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
   status.innerText = 'Resizing...';
 
   try {
-    const res = await fetch(`http://127.0.0.1:8000/resize?platform=${platform}`, {
+    const res = await fetch(`https://thumbnail-resizer-saas.onrender.com/resize?platform=${platform}`, {
       method: 'POST',
       body: formData,
     });
