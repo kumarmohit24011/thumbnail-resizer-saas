@@ -1,54 +1,47 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from PIL import Image
-import io
-from PIL import Image, UnidentifiedImageError
+from io import BytesIO
+from fastapi.responses import StreamingResponse
+
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins (use specific domains in prod)
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
-# Platform dimensions
-platform_sizes = {
-    "youtube_thumbnail": (1280, 720),
-    "youtube_shorts": (720, 1280),
+sizes = {
+    "youtube_shorts": (1080, 1920),
+    "youtube_video": (1280, 720),
     "instagram_post": (1080, 1080),
-    "instagram_story": (1080, 1920)
 }
-
-
 
 @app.post("/resize")
 async def resize_image(platform: str, file: UploadFile = File(...)):
     try:
-        if platform not in platform_sizes:
-            return {"error": "Invalid platform"}
+        content = await file.read()
+        print("📦 File size:", len(content))
+        if len(content) == 0:
+            raise HTTPException(status_code=400, detail="Empty file")
 
-        # Read file bytes safely
-        contents = await file.read()
-        img_io = io.BytesIO(contents)
+        image = Image.open(BytesIO(content))
+        image = image.convert("RGB")
 
-        try:
-            img = Image.open(img_io).convert("RGB")  # Convert to RGB for JPEG
-        except UnidentifiedImageError:
-            return {"error": "Cannot identify image file"}
+        if platform not in sizes:
+            raise HTTPException(status_code=400, detail="Invalid platform")
 
-        resized = img.resize(platform_sizes[platform])
+        width, height = sizes[platform]
+        resized_image = image.resize((width, height))
+        buffer = BytesIO()
+        resized_image.save(buffer, format="JPEG")
+        buffer.seek(0)
 
-        output_io = io.BytesIO()
-        resized.save(output_io, format="JPEG", quality=90)
-        output_io.seek(0)
-
-        return StreamingResponse(output_io, media_type="image/jpeg")
-
+        return StreamingResponse(buffer, media_type="image/jpeg", headers={
+            "Content-Disposition": f"attachment; filename=resized_{platform}.jpg"
+        })
     except Exception as e:
-        print("❌ Resize error:", e)
-        return {"error": str(e)}
-
+        print("❌ Exception in /resize:", str(e))
+        raise HTTPException(status_code=500, detail="Resize failed")
