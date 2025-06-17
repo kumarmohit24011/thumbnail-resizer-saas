@@ -17,9 +17,10 @@ document.getElementById('uploadForm').addEventListener('submit', async (e) => {
 
   try {
     const res = await fetch(`https://thumbnail-resizer-saas.onrender.com/resize?platform=${platform}`, {
-      method: 'POST',
-      body: formData,
-    });
+  method: 'POST',
+  body: formData,
+});
+
 
     if (!res.ok) throw new Error('Resize failed');
 
