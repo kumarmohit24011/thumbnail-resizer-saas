@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 from io import BytesIO
 from fastapi.responses import StreamingResponse
 
@@ -24,11 +24,16 @@ async def resize_image(platform: str, file: UploadFile = File(...)):
     try:
         content = await file.read()
         print("📦 File size:", len(content))
+
         if len(content) == 0:
             raise HTTPException(status_code=400, detail="Empty file")
 
-        image = Image.open(BytesIO(content))
-        image = image.convert("RGB")
+        try:
+            image = Image.open(BytesIO(content))
+            image = image.convert("RGB")
+        except UnidentifiedImageError:
+            print("❌ Image format not supported")
+            raise HTTPException(status_code=400, detail="Unsupported image format")
 
         if platform not in sizes:
             raise HTTPException(status_code=400, detail="Invalid platform")
